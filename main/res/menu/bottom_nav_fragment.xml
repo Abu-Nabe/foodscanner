@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/qr_icon"
+        android:icon="@drawable/icon_qr"
+        android:title="" />
+
+    <item
+        android:id="@+id/food_icon"
+        android:icon="@drawable/baseline_food_bank_24"
+        android:title="" />
+
+    <item
+        android:id="@+id/expiry_icon"
+        android:icon="@drawable/baseline_fastfood_24"
+        android:title="" />
+
+    <item
+        android:id="@+id/waste_icon"
+        android:icon="@drawable/baseline_no_food_24"
+        android:title="" />
+
+</menu>

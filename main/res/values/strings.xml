@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">UniFood</string>
+
+    <string name="DATABASE_NAME">my_database</string>
+    <string name="DATABASE_VERSION">1</string>
+    <string name="TABLE_NAME">food_list</string>
+    <string name="COLUMN_NAME_1">name</string>
+    <string name="COLUMN_NAME_2">expiry</string>
+    <string name="COLUMN_NAME_3">wasted</string>
+</resources>
