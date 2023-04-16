@@ -19,6 +19,7 @@ public class NotificationBroadcastReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         // Send Firebase notification
         // ...
+        Log.d("XAS", "getting called");
         apiService = Client.getClient("https://fcm.googleapis.com/").create(ApiService.class);
         // can change it using intent.getStringExtra to get data from tables, but wanna save time for now
         String body = "Come check if your food is expiring";

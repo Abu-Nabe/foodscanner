@@ -9,6 +9,7 @@ import android.view.MenuItem;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.app.AppCompatDelegate;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
@@ -61,10 +62,11 @@ public class MainActivity extends AppCompatActivity{
                 PreferencesUtils.saveToken(token, MainActivity.this);
                 configNotification();
             } else {
-                Log.e("XAS", "Failed to get Firebase token", task.getException());
                 if(PreferencesUtils.getToken(this) != null) configNotification();
             }
         });
+
+        AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES);
 
         TABLE_NAME = getResources().getString(R.string.TABLE_NAME);
         COLUMN_NAME_1 = getResources().getString(R.string.COLUMN_NAME_1);
@@ -105,7 +107,7 @@ public class MainActivity extends AppCompatActivity{
             }
         });
 
-        config();
+//        config();
     }
 
     private void config()
@@ -148,8 +150,7 @@ public class MainActivity extends AppCompatActivity{
         calendar.set(Calendar.SECOND, 0);
 
         // Schedule a repeating alarm that triggers every day at 12 PM
-        alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(),
-                AlarmManager.INTERVAL_DAY, pendingIntent);
+        alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, calendar.getTimeInMillis(), pendingIntent);
     }
     private class MyPagerAdapter extends FragmentPagerAdapter {
 

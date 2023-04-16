@@ -1,16 +1,26 @@
 package com.example.unifood.Main.Fragments;
 
 import android.Manifest;
+import android.app.DatePickerDialog;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.Button;
+import android.widget.DatePicker;
+import android.widget.EditText;
+import android.widget.NumberPicker;
+import android.widget.Spinner;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -21,26 +31,31 @@ import androidx.fragment.app.Fragment;
 import com.example.unifood.Main.Data.Retrieve;
 import com.example.unifood.Main.Extension.AlertPermission;
 import com.example.unifood.Main.Extension.DateComparison;
+import com.example.unifood.Main.Extension.editTextChange;
 import com.example.unifood.Main.Main.MainActivity;
 import com.example.unifood.Main.Scanner.CapAct;
 import com.example.unifood.Main.Scanner.OpenFoodFactsApiClient;
 import com.example.unifood.Main.Scanner.ReadQRCode;
 import com.example.unifood.R;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
 import com.google.zxing.Result;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.Calendar;
 
 public class CameraFragment extends Fragment implements SurfaceHolder.Callback, Camera.PictureCallback{
 
     Button button;
     private static final int CAMERA_REQUEST = 1888;
-    String permission;
+    String permission; String productName = "";
 
+    JSONArray namesArray;
     private SurfaceHolder surfaceHolder;
     private Camera camera;
 
@@ -53,7 +68,9 @@ public class CameraFragment extends Fragment implements SurfaceHolder.Callback, 
     private static final int DATABASE_VERSION = 1;
 
     // Table name and column names
+    DatePickerDialog.OnDateSetListener mDataSetListener;
 
+    BottomSheetDialog bottomSheetDialog;
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
@@ -74,9 +91,25 @@ public class CameraFragment extends Fragment implements SurfaceHolder.Callback, 
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                productName = "";
                 launchQRScanner();
             }
         });
+
+        mDataSetListener = new DatePickerDialog.OnDateSetListener() {
+            @Override
+            public void onDateSet(DatePicker view, int year, int month, int day)
+            {
+                month = month + 1;
+
+                String currentDay = DateComparison.currentDay();
+                String expiryDate = day + "/" + month + "/" + year;
+
+                Retrieve.insertRow(getActivity(), productName, currentDay, expiryDate);
+
+                bottomSheetDialog.dismiss();
+            }
+        };
         return view;
     }
 
@@ -156,28 +189,41 @@ public class CameraFragment extends Fragment implements SurfaceHolder.Callback, 
             Result result = ReadQRCode.decodeQR(scanResult.getBarcodeImagePath());
             if(result != null){
                 String barcode = result.getText();
-
+                final Handler handler = new Handler(Looper.getMainLooper());
                 Thread thread = new Thread(new Runnable() {
                     @Override
                     public void run() {
                         try  {
                             try {
                                 JSONObject productJson = OpenFoodFactsApiClient.getProductInfo(barcode);
-                                String productName = productJson.optString("product_name", "Unknown product");
-                                String expiryDate = productJson.optString("expiration_date", "Unknown expiry date");
+                                if (productJson.has("product_name")) {
+                                    productName = productJson.getString("product_name");
+                                } else{
+                                    namesArray = productJson.getJSONArray("_keywords");
+                                }
                                 String currentDay = DateComparison.currentDay();
-                                // Log or display the product and brand names
-                                if(productName.equals("Unknown product")) {
-                                    Toast.makeText(getActivity(), "failed to get product", Toast.LENGTH_SHORT).show();
-                                }else{
-                                    if(expiryDate.equals(expiryDate)) expiryDate = DateComparison.defaultExpiry();
+                                String expiryDate = "";
+                                if(productJson.has("expiration_date")) expiryDate = productJson.optString("expiration_date");
+
+                                if(!expiryDate.equals("")){
                                     Retrieve.insertRow(getActivity(), productName, currentDay, expiryDate);
+                                }else{
+                                    openBottomSheet();
                                 }
                             } catch (IOException | JSONException e) {
+
+                                openBottomSheet();
                                 e.printStackTrace();
                                 Log.d("XAS", e.toString());
                             }
                         } catch (Exception e) {
+                            handler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    // handle the exception in the main thread
+                                    openBottomSheet();
+                                }
+                            });
                             e.printStackTrace();
                         }
                     }
@@ -185,13 +231,114 @@ public class CameraFragment extends Fragment implements SurfaceHolder.Callback, 
 
                 thread.start();
             }else{
-                Log.d("XAS", "null");
+                openBottomSheet();
             }
-
         }else{
-            Log.d("XAS", "doom");
+            openBottomSheet();
         }
     });
+
+    private void openBottomSheet()
+    {
+        bottomSheetDialog = new BottomSheetDialog(getActivity());
+        bottomSheetDialog.setContentView(R.layout.activity_add_sheet);
+        bottomSheetDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+
+        EditText editText;
+        Button dob = bottomSheetDialog.findViewById(R.id.button);
+        editText = bottomSheetDialog.findViewById(R.id.food_name);
+        NumberPicker spinner = bottomSheetDialog.findViewById(R.id.spinner);
+
+        String[] keywords;
+        if(namesArray != null){
+            keywords = new String[namesArray.length()];
+            for(int i = 0; i < keywords.length; i++){
+                try {
+                    String keyword = namesArray.getString(i);
+                    if (keyword == null) {
+                        continue;
+                    }
+                    keywords[i] = keyword;
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            spinner.setMinValue(0);
+            spinner.setMaxValue(keywords.length - 1);
+            spinner.setDisplayedValues(keywords);
+
+            for(int i = 0; i < keywords.length; i++){
+                if(keywords[i].equals(editText.getText().toString())){
+                    spinner.setValue(i);
+                }
+            }
+
+            spinner.setOnValueChangedListener(new NumberPicker.OnValueChangeListener() {
+                @Override
+                public void onValueChange(NumberPicker picker, int oldVal, int newVal) {
+                    editText.setText(keywords[newVal]);
+                    productName = keywords[newVal];
+                }
+            });
+        }
+
+        if(!productName.equals("")){
+            Log.d("XAS", productName);
+            editText.setText(productName);
+            editText.setEnabled(false);
+        }else if(namesArray != null){
+            spinner.setVisibility(View.VISIBLE);
+            dob.setVisibility(View.GONE);
+
+            editText.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    spinner.setVisibility(View.GONE);
+                    dob.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+
+        spinner.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                spinner.setVisibility(View.GONE);
+                dob.setVisibility(View.VISIBLE);
+            }
+        });
+        dob.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String inputString = editText.getText().toString().trim();
+                String stringWithoutSpaces = inputString.replaceAll(" ", "");
+
+                if (!stringWithoutSpaces.isEmpty()) {
+                    productName = inputString;
+                    Calendar cal = Calendar.getInstance();
+                    int year = cal.get(Calendar.YEAR);
+                    int month = cal.get(Calendar.MONTH);
+                    int day = cal.get(Calendar.DAY_OF_MONTH);
+
+                    DatePickerDialog dialog = new DatePickerDialog(
+                            getContext(),
+                            android.R.style.Theme_Holo_Light_Dialog_MinWidth,
+                            mDataSetListener,
+                            year, month, day);
+                    dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+                    dialog.setTitle("Expiry Date");
+                    dialog.show();
+                }else{
+                    editText.setText(null);
+                    editText.setHint("Food name is empty");
+                    editText.setHintTextColor(getActivity().getResources().getColor(R.color.red));
+                    editTextChange.changeTextColor(editText, getActivity());
+                }
+            }
+        });
+
+        bottomSheetDialog.show();
+    }
 
     @Override
     public void surfaceChanged(SurfaceHolder surfaceHolder, int i, int i1, int i2) {

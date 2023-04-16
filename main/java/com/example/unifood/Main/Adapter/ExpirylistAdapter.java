@@ -23,6 +23,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
 import java.util.List;
 
 public class ExpirylistAdapter extends RecyclerView.Adapter<ExpirylistAdapter.MyViewHolder> {
@@ -52,7 +53,7 @@ public class ExpirylistAdapter extends RecyclerView.Adapter<ExpirylistAdapter.My
         // to surpress issue with position
         int i = position;
 
-        holder.checkBox.setChecked(foodList.contains(mList.get(position).getName()));
+        holder.checkBox.setChecked(foodList.contains(mList.get(position).getData()));
 
         holder.name.setText(mList.get(position).getName());
         holder.data.setText(mList.get(position).getData());
@@ -65,7 +66,7 @@ public class ExpirylistAdapter extends RecyclerView.Adapter<ExpirylistAdapter.My
                     positions.add(i);
                 }else{
                     deleteDialog(mList.get(i).getName());
-                    positions.remove(i);
+                    positions.removeAll(Collections.singleton(i));
                 }
             }
         });
@@ -88,9 +89,10 @@ public class ExpirylistAdapter extends RecyclerView.Adapter<ExpirylistAdapter.My
                     int deletePos = positions.get(pos);
                     foodList.remove(foodList.get(pos));
                     mList.remove(deletePos);
-                    ExpirylistAdapter.super.notifyDataSetChanged();
                 }
+                ExpirylistAdapter.super.notifyDataSetChanged();
                 rightIcon.setVisibility(View.GONE);
+                positions.clear();
             }
         });
     }
